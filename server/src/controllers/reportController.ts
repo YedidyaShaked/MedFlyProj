@@ -22,9 +22,10 @@ export const getReport = async (req: Request, res: Response) => {
         FROM caregiver
         JOIN visit ON visit.caregiver = caregiver.id
         JOIN patient ON patient.id = visit.patient
+        WHERE EXTRACT(year FROM visit.date) = ${req.params.year}
     `;
-    
-    let result : QueryResult;
+
+    let result: QueryResult;
     try {
         result = await dbUtil.sqlToDB(sql, []);
         const report: Report = {
@@ -32,11 +33,18 @@ export const getReport = async (req: Request, res: Response) => {
             caregivers: []
         };
 
-        for ( let row of result.rows) {
-            report.caregivers.push({
-                name: row.caregiver_name,
-                patients: [row.patient_name]
-            })
+        for (let row of result.rows) {
+            let index = report.caregivers.findIndex(x => x.name === row.caregiver_name)
+
+            if (index === -1) {
+                report.caregivers.push({
+                    name: row.caregiver_name,
+                    patients: [row.patient_name]
+                })
+
+            } else {
+                report.caregivers[index].patients.push(row.patient_name)
+            }
         }
         res.status(200).json(report);
     } catch (error) {
